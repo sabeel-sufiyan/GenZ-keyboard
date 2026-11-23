@@ -1,8 +1,12 @@
 # GenZ Keyboard
 
+![GenZ Keyboard icon](icon.png)
+
 A real Android keyboard (IME) built with Kotlin and Jetpack Compose, in the Material 3
 Expressive design language. Fast, quiet and private: it types into any app, it does not
 watch what you type, and it has no analytics, no ads and no tracking SDKs.
+
+![GenZ Keyboard feature graphic](featureGraphic.png)
 
 **Created by Umaiz Sufiyan** · [@sufiyan-sabeel](https://github.com/sufiyan-sabeel)
 
