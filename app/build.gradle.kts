@@ -14,8 +14,8 @@ android {
         applicationId = "com.genz.keyboard"
         minSdk = 26
         targetSdk = 35
-        versionCode = 10
-        versionName = "1.0.5"
+        versionCode = 1
+        versionName = "1.0.0"
         vectorDrawables {
             useSupportLibrary = true
         }

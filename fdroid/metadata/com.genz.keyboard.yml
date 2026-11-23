@@ -48,19 +48,21 @@ MaintainerNotes: |
   group reappears on the runtime classpath, and if the `standard` and `fdroid` flavours stop
   differing in the expected way (artwork present in one, absent in the other).
 
-  versionCode is never reused: 1.0.3 shipped as 7 and was rebuilt as 8, 1.0.4 is 9.
+  versionCode is never reused. This line restarts at 1.0.0 with versionCode 1; the upstream
+  history (1.0.3 as 7 and 8, 1.0.4 as 9, 1.0.5 as 10) belongs to the earlier repository and
+  does not continue here.
 
 RepoType: git
 Repo: https://github.com/sufiyan-sabeel/genZ-keyboard.git
 
 Builds:
-  - versionName: 1.0.4
-    versionCode: 9
-    commit: cde79d927a52a05502488c7fd07fb080775a38ef
+  - versionName: 1.0.0
+    versionCode: 1
+    commit: v1.0.0
     gradle:
       - fdroid
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
-CurrentVersion: 1.0.4
-CurrentVersionCode: 9
+CurrentVersion: 1.0.0
+CurrentVersionCode: 1

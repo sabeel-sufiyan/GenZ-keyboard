@@ -211,7 +211,7 @@ jobs:
 
           Created by Umaiz Sufiyan (https://github.com/sufiyan-sabeel).
 
-          ### What changed in 1.0.4
+          ### What changed in 1.0.0
           - **Prepared for F-Droid.** The app now builds entirely from free software: the
             proprietary Google ML Kit on-device AI dependency has been removed. The remaining AI
             options (Gemini, Claude, OpenAI, Groq, OpenRouter, LanguageTool) are ordinary network

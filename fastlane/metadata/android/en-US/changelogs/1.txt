@@ -1,0 +1,5 @@
+- First release of GenZ Keyboard as 1.0.0
+- Android IME in Kotlin and Jetpack Compose, Material 3 Expressive
+- Types into any app; no analytics, no ads, no tracking SDKs
+- Ten themes, custom colours, emoji and GIF search with your own key
+- Two flavours: standard (with the anime artworks) and fdroid (without them)
