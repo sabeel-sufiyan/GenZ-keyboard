@@ -58,7 +58,7 @@ Repo: https://github.com/sufiyan-sabeel/genZ-keyboard.git
 Builds:
   - versionName: 1.0.0
     versionCode: 1
-    commit: v1.0.0
+    commit: 92a7133734c8a69c8e4d2048de7edf954dfd3308
     gradle:
       - fdroid
 
