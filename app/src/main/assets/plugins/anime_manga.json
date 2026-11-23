@@ -1,0 +1,147 @@
+{
+  "id": "builtin.anime.manga",
+  "name": "Не сдавайся",
+  "version": "2.0",
+  "author": "GenZ Keyboard",
+  "description": "Серая страница манги с тяжёлым чернильным силуэтом. Клавиши цвета бумаги, чёрные буквы и ничего лишнего.",
+  "icon": "🎴",
+  "backgroundImage": "anime/manga.webp",
+  "skin": {
+    "keyboard": {
+      "background": {
+        "colors": [
+          "#F3DADA",
+          "#F3DADA"
+        ],
+        "angle": 90
+      },
+      "corner": 22
+    },
+    "colors": {
+      "background": "#F3DADA",
+      "key": "#FDF0F0",
+      "keyText": "#1D1313",
+      "func": "#E7CBCB",
+      "funcText": "#1D1313",
+      "accent": "#382424",
+      "accentText": "#FFFFFF"
+    },
+    "keys": {
+      "*": {
+        "material": "solid",
+        "background": "#D9FDF0F0",
+        "border": "#30382424",
+        "borderWidth": 1,
+        "glow": "#1A382424",
+        "text": "#1D1313",
+        "pressedBackground": "#382424",
+        "pressedText": "#FFFFFF",
+        "press": "bounce",
+        "pressScale": 1.04,
+        "radius": 12,
+        "inset": 1.5,
+        "hideHint": true
+      },
+      "func": {
+        "material": "solid",
+        "background": "#D9E7CBCB",
+        "border": "#30382424",
+        "text": "#1D1313",
+        "pressedBackground": "#735C5C",
+        "pressedText": "#FFFFFF"
+      },
+      "space": {
+        "border": "#40382424",
+        "text": "#1D1313",
+        "fontScale": 0.9
+      },
+      "enter": {
+        "material": "solid",
+        "background": {
+          "colors": [
+            "#382424",
+            "#735C5C"
+          ],
+          "angle": 0
+        },
+        "text": "#FFFFFF",
+        "glow": "#55382424",
+        "pressedBackground": "#1D1313"
+      },
+      "shift": {
+        "material": "solid",
+        "background": "#F2E7CBCB",
+        "border": "#30382424",
+        "text": "#1D1313",
+        "pressedBackground": "#382424",
+        "pressedText": "#FFFFFF"
+      },
+      "backspace": {
+        "material": "solid",
+        "background": "#F2E7CBCB",
+        "border": "#30382424",
+        "text": "#1D1313",
+        "pressedBackground": "#382424",
+        "pressedText": "#FFFFFF"
+      },
+      "mode": {
+        "material": "solid",
+        "background": "#F2E7CBCB",
+        "text": "#1D1313",
+        "pressedBackground": "#382424",
+        "pressedText": "#FFFFFF"
+      },
+      "globe": {
+        "material": "solid",
+        "background": "#F2E7CBCB",
+        "text": "#1D1313",
+        "pressedBackground": "#382424",
+        "pressedText": "#FFFFFF"
+      },
+      "emoji": {
+        "material": "solid",
+        "background": "#F2E7CBCB",
+        "text": "#1D1313",
+        "pressedBackground": "#382424",
+        "pressedText": "#FFFFFF"
+      },
+      "digit": {
+        "text": "#1D1313"
+      }
+    },
+    "popup": {
+      "radius": 12,
+      "background": "#F3DADA",
+      "border": "#382424",
+      "text": "#1D1313",
+      "pressedBackground": "#382424",
+      "pressedText": "#FFFFFF"
+    },
+    "chips": {
+      "material": "solid",
+      "background": "#59F3DADA",
+      "border": "#26382424",
+      "borderWidth": 1,
+      "text": "#1D1313",
+      "pressedBackground": "#CC382424",
+      "pressedText": "#FFFFFF"
+    },
+    "buttons": {
+      "material": "outline",
+      "background": "#B3FDF0F0",
+      "border": "#66382424",
+      "borderWidth": 1.1,
+      "glow": "#20382424",
+      "text": "#1D1313",
+      "pressedBackground": "#382424"
+    },
+    "panel": {
+      "material": "outline",
+      "background": "#E6F3DADA",
+      "border": "#40382424",
+      "borderWidth": 1,
+      "glow": "#00000000",
+      "radius": 20
+    }
+  }
+}

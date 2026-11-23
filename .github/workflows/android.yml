@@ -1,0 +1,251 @@
+name: Android CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      publish_release:
+        description: 'Build a release APK and publish it as a GitHub Release'
+        type: boolean
+        default: false
+      version:
+        description: 'Version tag for the release (e.g. v1.0.0)'
+        type: string
+        default: 'v1.0.0'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build & test
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        run: |
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          SDKMGR=$(ls -d "$SDK_ROOT"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | head -1)
+          echo "Using sdkmanager: $SDKMGR"
+          yes | "$SDKMGR" --licenses > /dev/null 2>&1 || true
+          "$SDKMGR" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          echo "SDK packages installed"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Unit tests
+        run: ./gradlew testStandardDebugUnitTest --stacktrace
+
+      - name: Dependency policy check (F-Droid)
+        run: |
+          ./gradlew :app:dependencies --configuration fdroidReleaseRuntimeClasspath > deps.txt 2>&1 || {
+            echo "::error::could not resolve the fdroid release classpath"; tail -40 deps.txt; exit 1; }
+          DENY='com\.google\.mlkit|com\.google\.firebase|com\.google\.android\.gms|com\.google\.android\.play|com\.applovin|com\.unity3d\.ads|com\.facebook\.ads|com\.adjust\.sdk'
+          if grep -Eq "$DENY" deps.txt; then
+            echo "::error::proprietary dependency on the fdroid runtime classpath"
+            grep -E "$DENY" deps.txt | sort -u | head -20
+            exit 1
+          fi
+          echo "no known proprietary dependencies on the fdroid runtime classpath"
+          echo "resolved artifacts: $(grep -cE '^[+\\| ]' deps.txt)"
+
+      - name: Build F-Droid flavour (no proprietary assets)
+        run: ./gradlew assembleFdroidRelease --stacktrace
+
+      - name: Build debug APK
+        run: ./gradlew assembleStandardDebug --stacktrace
+
+      - name: Verify APK exists and report details
+        run: |
+          APK=$(ls app/build/outputs/apk/standard/debug/*.apk | head -1)
+          ls -lh "$APK"
+          BT=$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)
+          "$ANDROID_HOME/build-tools/$BT/aapt2" dump badging "$APK" | head -5
+          echo "APK_PATH=$APK" >> "$GITHUB_ENV"
+
+      - name: Verify the two flavours differ as intended
+        run: |
+          STD=$(ls app/build/outputs/apk/standard/debug/*.apk | head -1)
+          FD=$(ls app/build/outputs/apk/fdroid/release/*.apk | head -1)
+          count() { unzip -l "$1" | grep -c "assets/anime/" || true; }
+          STD_N=$(count "$STD"); FD_N=$(count "$FD")
+          echo "standard artwork files: $STD_N"
+          echo "fdroid artwork files:   $FD_N"
+          if [ "$STD_N" -lt 10 ]; then echo "::error::standard build is missing anime artwork"; exit 1; fi
+          if [ "$FD_N" -ne 0 ]; then echo "::error::fdroid build must not bundle third-party artwork"; exit 1; fi
+          echo "flavour separation verified"
+
+      - name: Upload F-Droid flavour APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: genz-keyboard-fdroid-apk
+          path: app/build/outputs/apk/fdroid/release/*.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: genz-keyboard-debug-apk
+          path: app/build/outputs/apk/standard/debug/*.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-reports
+          path: app/build/reports/tests/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  release:
+    name: Release APK
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_release
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        run: |
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          SDKMGR=$(ls -d "$SDK_ROOT"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | head -1)
+          yes | "$SDKMGR" --licenses > /dev/null 2>&1 || true
+          "$SDKMGR" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      # A release APK must be signed with a key that stays the same across releases, or
+      # installed copies can never be updated. The key is never committed: it is supplied
+      # through repository secrets. Without them the build falls back to the debug key,
+      # which is fine for testing but means a later release cannot update an earlier one.
+      - name: Configure release signing
+        env:
+          KEYSTORE_B64: ${{ secrets.RELEASE_KEYSTORE_B64 }}
+          STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "Using keystore from repository secrets"
+            echo "$KEYSTORE_B64" | base64 -d > release.keystore
+            {
+              echo "RELEASE_STORE_FILE=release.keystore"
+              echo "RELEASE_STORE_PASSWORD=$STORE_PASSWORD"
+              echo "RELEASE_KEY_ALIAS=$KEY_ALIAS"
+              echo "RELEASE_KEY_PASSWORD=$KEY_PASSWORD"
+            } >> local.properties
+            echo "SIGNING=release key" >> "$GITHUB_ENV"
+          else
+            echo "No keystore secrets set - the release APK will be signed with the debug key"
+            echo "SIGNING=debug key (testing only)" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build release APK
+        run: ./gradlew assembleStandardRelease --stacktrace
+
+      - name: Inspect release APK
+        run: |
+          APK=$(ls app/build/outputs/apk/standard/release/*.apk | head -1)
+          if [ -z "$APK" ]; then
+            echo "::error::Release APK was not produced"
+            exit 1
+          fi
+          ls -lh "$APK"
+          BT=$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)
+          "$ANDROID_HOME/build-tools/$BT/aapt2" dump badging "$APK" | head -3
+          "$ANDROID_HOME/build-tools/$BT/apksigner" verify --print-certs "$APK" | head -5
+          cp "$APK" "GenZKeyboard-${{ inputs.version }}.apk"
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.version }}
+          SIGNING: ${{ env.SIGNING }}
+        run: |
+          NOTES=$(cat <<'EOF'
+          GenZ Keyboard - an Android keyboard built with Kotlin and Jetpack Compose, in the
+          Material 3 Expressive design language.
+
+          Created by Umaiz Sufiyan (https://github.com/sufiyan-sabeel).
+
+          ### What changed in 1.0.4
+          - **Prepared for F-Droid.** The app now builds entirely from free software: the
+            proprietary Google ML Kit on-device AI dependency has been removed. The remaining AI
+            options (Gemini, Claude, OpenAI, Groq, OpenRouter, LanguageTool) are ordinary network
+            clients using your own key, and the keyboard works with none of them.
+          - **Two flavours from one codebase.** This APK is the `standard` build and keeps the ten
+            anime artworks. The `fdroid` flavour ships the same keyboard without them, because
+            their redistribution rights are unresolved; each theme then falls back to the palette
+            sampled from its artwork.
+          - F-Droid store metadata and a build recipe are in the repository under `fastlane/` and
+            `fdroid/metadata/`.
+
+          ### F-Droid status
+          **Not yet available on the official F-Droid repository.** The submission still has to be
+          opened against fdroiddata and accepted by its reviewers.
+
+          ### Install
+          1. Download the APK below.
+          2. Allow installation from your browser or file manager.
+          3. Open GenZ Keyboard, then enable it in
+             Settings -> System -> Languages & input -> On-screen keyboard -> Manage keyboards.
+
+          ### Signing
+          This build is signed with the **debug key** unless repository signing secrets are
+          configured, so uninstall any earlier copy before installing it. F-Droid signs its own
+          builds; this APK is never substituted for one.
+
+          ### Source
+          Full source and licence: https://github.com/sufiyan-sabeel/genZ-keyboard
+          EOF
+          )
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "Release $TAG exists - replacing the APK asset and refreshing the notes"
+            gh release upload "$TAG" "GenZKeyboard-$TAG.apk" --clobber
+            gh release edit "$TAG" --notes "$NOTES"
+          else
+            gh release create "$TAG" "GenZKeyboard-$TAG.apk"               --title "GenZ Keyboard $TAG"               --notes "$NOTES"
+          fi
